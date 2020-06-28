@@ -1,0 +1,32 @@
+---
+title: "Week 2 Leaflet Assignment"
+author: "Hao Zhe Liu"
+date: "6/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Map
+The following map is an arbitrary list of 3-star Michelin Restaurants in the US.
+
+```{r}
+library(leaflet)
+
+base_map <- 
+  leaflet() %>% 
+  addTiles() %>% 
+  addAwesomeMarkers(
+    lat = c(36.169090, 40.761421, 40.768429, 
+            40.756179, 38.404435, 37.798330),
+    lng = c(-115.140580, -73.981667, -73.983070, 
+            -73.996358, -122.364795, -122.435984),
+    popup = c('Joël Robuchon', 'Le Bernardin', 'Masa',
+              'Chef\'s Table at Brooklyn Fare', 'The French Laundry', 
+              'Atelier Crenn')
+  )
+
+base_map
+```
