@@ -1,0 +1,128 @@
+---
+title: "Data Product Pitch"
+author: "Hao Zhe Liu"
+date: "7/1/2020"
+output: 
+  ioslides_presentation: 
+    smaller: yes
+    widescreen: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+data(mtcars)
+
+modelList <- function(){
+  tgt = "mpg"
+  featureList = colnames(mtcars)
+  featureList = featureList[featureList != tgt]
+  lmFormula = paste0(tgt, "~") 
+  
+  modelList = list(NULL)
+  formulaList = list(NULL)
+  mseList = list(NULL)
+  
+  while (length(featureList != 0)) {
+    bestResid = -1
+    bestFeat = ""
+    bestModel = NULL
+    for (f in featureList) {
+      model = lm(paste0(lmFormula, "+", f), data=mtcars)
+      currResid = sum(residuals(model)^2)
+      
+      if (currResid < bestResid || bestResid == -1) {
+        bestResid = currResid
+        bestFeat = f
+        bestModel = model
+      }
+    }
+    
+    if (lmFormula != paste0(tgt, "~")) {
+      lmFormula = paste0(lmFormula, "+", bestFeat)
+    } else {
+      lmFormula = paste0(lmFormula, bestFeat)
+    }
+    
+    modelList = c(modelList, list(bestModel))
+    formulaList = c(formulaList, lmFormula)
+    mseList = c(mseList, bestResid)
+    
+    featureList = featureList[featureList != bestFeat]
+  }
+  cbind(modelList[2:(length(modelList))], 
+        formulaList[2:(length(modelList))],
+        mseList[2:(length(modelList))])
+}
+
+```
+
+## Introduction
+
+This pitch deck describes the Shiny application: MTCars Linear Model Creation Kit. Its purpose is for visual EDA of fitting linear models on the MtCars dataset.
+
+The tool has the following components.
+
+*  **Control panel**: controls the number of features fit and the target feature, also toggles displays
+*  **Density Plot of Fitted Residuals**: shows the density of fitted residuals over all fitted models
+*  **Line Graph of Mean Squared Error**: shows MSE over all fitted models indexed by number of features fit, as well as the average and minimum MSEs.
+*  **Table**: shows the linear model formula and its corresponding MSE.
+
+In the backend, the program iteratively fits the linear model with the feature resulting in a minimum Mean Squared Error and stores the models, formulae, and MSE internally.
+
+## Inputs
+
+**Predictor Selector**: Allows user to select any of the features provided in mtcars, they are the following.
+```{r}
+colnames(mtcars)
+```
+
+**Feature Selector**: Allows user to select a range of features, between 1 and 10. If only one feature is selected, then only one feature will be displayed.
+
+**Toggle Checkboxes**: Allows user to toggle the individual visuals on and off, quite self explanatory. 
+
+
+## Density Plot 
+- It displays the histograms of these models based on number of features used.
+- The purpose of this plot is to see the concentration of residuals and how it changes as more features are fit. 
+
+```{r, echo=FALSE}
+selectModels <- modelList()[,1][1:10]
+resId = NULL
+
+for (i in c(1:length(selectModels))) {
+  tempResid = data.frame(residuals(selectModels[[i]]))
+  tempResid$deg = toString(i)
+  colnames(tempResid) = c("residuals", "degree")
+  if (is.null(resId)) {
+    resId = tempResid
+  } else {
+    resId = rbind(resId, tempResid)
+  }
+}
+
+ggplot(resId, aes(residuals, fill = degree)) + 
+  geom_density(alpha=0.2, color=NA) +
+  ggtitle("Density Plot of Fitted Residuals by Number of Features")
+
+```
+
+## MSE Line Graph
+- It plots the MSE for each fit model, as well as its average and minimum.
+- The purpose of this plot is to show how MSE reduces as more features are fit and ultimately to serve as a hockeystick analysis for selecting the number of features.
+
+```{r, echo=FALSE}
+selectMSE <- modelList()[,3][1:10]
+mseDf <- data.frame(degree=1:10, MSE=unlist(selectMSE))
+
+ggplot() + 
+  geom_line(data = mseDf, aes(degree, MSE, color="MSE per Number of Features", linetype="Actual Values")) + 
+  geom_point(data = mseDf, aes(degree, MSE, color="MSE per Number of Features")) + 
+  geom_hline(aes(yintercept=mean(mseDf$MSE), color = "Mean MSE", linetype="Aggregates")) + 
+  geom_hline(aes(yintercept=min(mseDf$MSE), color = "Min MSE", linetype="Aggregates")) + 
+  scale_colour_manual(values = c("red", "purple", "blue")) +
+  scale_linetype_manual(values = c("solid", "twodash")) +
+  ggtitle("Means Squared Error by Number of Features Fitted")
+
+```
+
